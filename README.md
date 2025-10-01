@@ -99,7 +99,7 @@ hasil yang sudah keluar dari information Extractor maka masuk kembali ke AI AGEN
 
 5. Respond to Webhook
 
-berikut kita tampilkan setting parameter nya
+berikut tampilan setting parameter nya
 <img width="700" height="400" alt="image" src="https://github.com/user-attachments/assets/716fcc6e-eebb-4042-983e-428b476f0f6b" />
 
 
