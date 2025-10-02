@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Chatbot UI</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --ink:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --me:#22c55e; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); display:flex; min-height:100vh; }
+    .chat { margin:auto; width:min(900px, 100%); height:100vh; display:grid; grid-template-rows:auto 1fr auto; }
+    header { padding:16px 20px; border-bottom:1px solid #1f2937; background:#0b1224; position:sticky; top:0; }
+    header h1 { margin:0; font-size:16px; letter-spacing:.3px; }
+    header .sub { color:var(--muted); font-size:12px; margin-top:4px; }
+    .messages { padding:18px; overflow:auto; display:flex; flex-direction:column; gap:12px; background:linear-gradient(180deg,#0b1224,#090f1c); }
+    .bubble { max-width:75ch; padding:10px 12px; border-radius:14px; line-height:1.35; width:fit-content; box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 1px 8px rgba(0,0,0,.25); }
+    .user { background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.35); align-self:flex-end; }
+    .bot { background:rgba(96,165,250,.10); border:1px solid rgba(96,165,250,.35); }
+    .meta { font-size:11px; color:var(--muted); margin-top:6px; }
+    .typing { display:inline-block; min-width:26px; letter-spacing:2px; }
+    .panel { padding:12px 16px; border-top:1px solid #1f2937; background:var(--panel); display:grid; grid-template-columns:1fr auto; gap:8px; }
+    textarea { resize:none; height:44px; padding:10px 12px; border-radius:12px; width:100%; border:1px solid #374151; background:#0b1224; color:var(--ink); outline:none; }
+    textarea:focus { border-color:#4b5563; box-shadow:0 0 0 3px rgba(96,165,250,.2); }
+    button { height:44px; border-radius:12px; border:1px solid #1f2937; background:var(--accent); color:#08111f; font-weight:600; padding:0 16px; cursor:pointer; }
+    button[disabled] { opacity:.6; cursor:not-allowed; }
+    .hint { font-size:12px; color:var(--muted); padding:8px 18px 16px; }
+  </style>
+</head>
+<body>
+  <main class="chat" role="application" aria-label="Chatbot">
+    <header>
+      <h1>Chatbot</h1>
+      <div class="sub">Enter to send, Shift+Enter for new line. Add <code>?webhook=...</code> to URL to set endpoint.</div>
+    </header>
+
+    <section id="messages" class="messages" aria-live="polite" aria-atomic="false">
+      <div class="bubble bot">
+        Hi! I’m your assistant. Ask me anything.
+        <div class="meta">bot</div>
+      </div>
+    </section>
+
+    <form id="chat-form" class="panel" autocomplete="off">
+      <label for="msg" class="visually-hidden">Message</label>
+      <textarea id="msg" name="message" placeholder="Type your message…" required></textarea>
+      <button id="send" type="submit">Send</button>
+    </form>
+    <div class="hint">
+      Set your n8n Webhook via:
+      <ul>
+        <li>Replace the placeholder in code: <code>https://YOUR_N8N_WEBHOOK_URL_HERE</code></li>
+        <li>Or append query param: <code>?webhook=https%3A%2F%2Fn8n.example.com%2Fwebhook%2Fabc123</code></li>
+      </ul>
+    </div>
+  </main>
+
+  <script>
+    // ------- CONFIG WITH PLACEHOLDER (replace this) -------
+    const DEFAULT_WEBHOOK = "https://unmummied-interferometrically-jaymie.ngrok-free.app/webhook-test/chat_agent"; // <<< replace later
+
+    // Optional: override via URL param ?webhook=<encodedURL>
+    const qp = new URLSearchParams(location.search);
+    const override = qp.get("webhook");
+    const CHAT_ENDPOINT = override ? decodeURIComponent(override) : DEFAULT_WEBHOOK;
+
+    if (CHAT_ENDPOINT.includes("YOUR_N8N_WEBHOOK_URL_HERE")) {
+      console.warn("Set your webhook: replace DEFAULT_WEBHOOK or pass ?webhook=...");
+    }
+
+    const $ = (sel) => document.querySelector(sel);
+    const messagesEl = $("#messages");
+    const form = $("#chat-form");
+    const input = $("#msg");
+    const sendBtn = $("#send");
+
+    const escapeHTML = (s) => s.replace(/[&<>"']/g, m => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[m]));
+
+    function appendBubble(text, who="bot") {
+      const div = document.createElement("div");
+      div.className = `bubble ${who === "user" ? "user" : "bot"}`;
+      div.innerHTML = `${escapeHTML(text)}<div class="meta">${who}</div>`;
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return div;
+    }
+
+    function showTyping() {
+      const b = document.createElement("div");
+      b.className = "bubble bot";
+      b.innerHTML = `<span class="typing">…</span><div class="meta">bot is typing</div>`;
+      messagesEl.appendChild(b);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return b;
+    }
+
+    async function sendMessage(text) {
+      input.value = "";
+      input.style.height = "44px";
+      sendBtn.disabled = true;
+
+      appendBubble(text, "user");
+      const typing = showTyping();
+
+      try {
+        const res = await fetch(CHAT_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        typing.remove();
+        appendBubble(String(data.reply ?? "No reply field in response."), "bot");
+      } catch (err) {
+        typing.remove();
+        appendBubble(`Error: ${err.message}. Check endpoint/CORS/payload.`, "bot");
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = Math.min(160, input.scrollHeight) + "px";
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (text) sendMessage(text);
+    });
+  </script>
+</body>
+</html>
