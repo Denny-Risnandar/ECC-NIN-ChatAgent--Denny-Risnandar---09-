@@ -102,7 +102,14 @@ hasil yang sudah keluar dari information Extractor maka masuk kembali ke AI AGEN
 berikut tampilan setting parameter nya
 
 
-<img width="700" height="400" alt="image" src="https://github.com/user-attachments/assets/716fcc6e-eebb-4042-983e-428b476f0f6b" />
+<img width="700" height="400" alt="Screenshot 2025-10-01 224027" src="https://github.com/user-attachments/assets/cdb6da65-0444-48bf-9161-bdf82d6e0c16" />
+
+
+sehingga hasil output chatbot nya seperti ini
+
+<img width="700" height="400" alt="screen hasil output pada chatbot" src="https://github.com/user-attachments/assets/85a093f3-2ff3-4b69-9872-7d0e6b85ca80" />
+
+
 
 
 
